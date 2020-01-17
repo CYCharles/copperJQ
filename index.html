@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title></title>
+		<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+		<link rel="stylesheet" type="text/css" href="css/cropper.min.css"/>
+		<script src="js/jquery-1.8.3.min.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/cropper.min.js" type="text/javascript" charset="utf-8"></script>
+		<style type="text/css">
+			/*Logo裁剪*/
+			.cutLogoPicturePop{position: fixed; top: 0; left: 0;bottom: 0;right: 0; overflow: hidden; display: none; z-index: 101;}
+			.copperMainBox{width: 100%;height: 60%;}
+			.img-preview-box{width: 100%;height: 200px;background: #FFFFFF;position: absolute;bottom: 40px;left: 0;padding-top: 20px;box-sizing: border-box;}
+			.img-preview{border: 1px solid #CCCCCC;box-sizing: border-box;height: 160px;width: 160px;margin: 0 auto;overflow: hidden;}
+			.btn-group{text-align: center;position: absolute;bottom: 0;height: 40px;left: 0;width: 100%;}
+			.btn-group span{display: inline-block;width: 50%;height: 40px;text-align: center;line-height: 40px;font-size: 16px;}
+			.btn-group span:first-child{background: #CCCCCC;color: #FFFFFF;float: left;}
+			.btn-group span:last-child{background: red;color: #FFFFFF;float: left;}
+			.shenheCon{position: relative;}
+			.companyLogoImg .shenhe{padding: 0;display: block;width: 80px;text-align: center;height: 80px;line-height: 80px;position: absolute;top:10px;left: 0;background: #000000;opacity: 0.7;z-index: 2;}
+			.companyLogoImg .shenheing{color: #FFFFFF;}
+			.companyLogoImg .shenheNo{color: #FFFFFF;}
+			/*透明背景*/
+			.m_master{width:100%; height:100%; overflow:hidden; background:#000; filter:alpha(opacity=60);-moz-opacity:0.6;opacity: 0.6; position:fixed; top:0; left:0; z-index:99; display: none;}
+			
+		</style>
+	</head>
+	<body>
+		<!-- 示例图片弹窗 -->
+		<div class="m_master"></div>
+		<!--Logo裁剪上传-->
+		<div class="cutLogoPicturePop">
+			<div class="copperMainBox"><img src="" alt="" id="image"></div>
+			<div class="img-preview-box"><div class="img-preview" style=""><img src="" /></div></div>
+			<!--选择后的图片进行上传 操作-->
+		    <form id="form_logo_photo" action="{/get_url rule='/company/UploadImageNew'/}" method="post" enctype="multipart/form-data">
+		        <input type="file" name="imageFile" id="chooseLogoImg" accept="image/gif,image/jpeg,image/jpg,image/png,image/svg"  value="" style="display: none;" />
+		    </form>
+			<div class="btn-group"><span class="cropper_closeBtn">取消</span><span class="cropper_sureBtn">确认</span></div>
+			<input type="hidden" name="" id="cropX" value="" />
+			<input type="hidden" name="" id="cropY" value="" />
+			<input type="hidden" name="" id="cropH" value="" />
+			<input type="hidden" name="" id="cropW" value="" />
+			<input type="hidden" name="" id="thumb_ratio" value="" />
+		</div>
+		<!--展示logo 以及点击选择图片-->
+		<div class="compnayLogoTit">
+			<span id="chooseLogoBtn" class="head-img">企业logo</span>
+		</div>
+		<div class="companyLogoImg" id="photo_upload_btn" class="">
+			<img id="photo_tx_url" class="head-img " src="./img/image.png">
+		</div>
+		<script type="text/javascript">
+			//实现方式
+			// 当前图片剪裁方式主要是,
+			// 选择图片后,进行上传,上传成功后,开始生成剪裁弹窗,然后取出剪裁参数,上传到后台,和后台配合完成剪裁.
+			//因为后台原有剪裁方法,所以前端只上传了剪裁参数,
+			
+			//知识点 
+			//1. cropper['getCroppedCanvas']({ maxWidth: 160, maxHeight: 160 }) 生成一张剪裁后图片 canvas 节点
+			
+			//2. jq change 当重复选择同一张图片时,是不会重复执行该change事件, 需要将input file 的val('')清空
+			
+			//3.重置图片 重新选择图片
+			 // cropper.reset().replace(chooseImgUrl);
+			
+			//4.固定定剪裁框的宽高
+				//minCropBoxHeight:160,
+				//minCropBoxWidth:160,
+				//cropBoxResizable:false,是否允许拖拽改变 剪裁框大小	
+			
+			//5.预览图
+				//preview: '.img-preview',
+				//最优结构 <div class="img-preview-box"><div class="img-preview" style=""><img src="" /></div></div>
+				//.img-preview{overflow:hidden}
+
+			//5.生成剪裁图片
+			// 如果纯前端剪裁 cropper['getCroppedCanvas']({ maxWidth: 160, maxHeight: 160 }) 生成一张剪裁后图片 canvas 节点
+			
+			//前端上传剪裁后图片 思路
+			// 根据这个生成canvas 然后再转base64 或者 二进制流上传
+			
+			//注意: 选择图片在IOS 中,会出现倒图,但是本次方案,经过IOS测试并未出现. 如果出现,就需要前端和后端一起旋转图片
+			
+			var cropper=null;
+			var JSON_ImgInfoObj={};
+			$('#photo_upload_btn').click(function(){
+				$('#chooseLogoImg').click();
+			})
+			$('#chooseLogoImg').change(function(){
+				var chooseImgUrl = URL.createObjectURL($(this)[0].files[0])
+				$('#image').attr('src', chooseImgUrl);
+			    // $('#form_logo_photo').ajaxSubmit({beforeSubmit: function(){showLoading()},data:{},success: function(res){
+					// if(res.status){
+						// JSON_ImgInfoObj=res;
+			            if(!cropper){
+			                cropper = new Cropper(image, {
+			                    aspectRatio: 1 / 1,
+			                    viewMode:1,
+			                    autoCropArea: 0.4,//定义初始化裁剪框对比图片的比例大小,默认为0.8
+			                    minContainerWidth:160,//容器的最小宽度。
+			                    minContainerHeight:160,//容器的最小高度。
+								minCanvasWidth:160,//canvas的最小宽度。
+								minCanvasHeight:160,//canvas的最小高度。
+			                    touchDragZoom:true,
+								cropBoxResizable:false,//是否允许拖拽改变 剪裁框大小
+			                    minCropBoxHeight:160,
+			                    minCropBoxWidth:160,
+			                    preview: '.img-preview',
+			                    crop:function (e) {
+			                         $('#cropX').val(e.detail.x),
+			                         $('#cropY').val(e.detail.y),
+			                         $('#cropH').val(e.detail.height),
+			                         $('#cropW').val(e.detail.width),
+			                         $('#thumb_ratio').val(e.detail.rotate)
+			                    }
+			                });
+			            }else{
+			                cropper.reset().replace(chooseImgUrl);
+			            }
+						// stopLoading();
+			            $('.m_master, .cutLogoPicturePop').show();
+					// }
+			    // },dataType:'json'});
+				
+			})
+			$('.cropper_closeBtn').click(function(){
+				$('.m_master, .cutLogoPicturePop').hide();
+				$('#chooseLogoImg').val(''); //清空input file val值   选择相同图片 change的bug,
+			})
+			$('.cropper_sureBtn').click(function(){
+				$('#chooseLogoImg').val('');
+				
+				$('#photo_tx_url').hide();
+				$('.companyLogoImg').append(cropper['getCroppedCanvas']({ maxWidth: 160, maxHeight: 160 }))
+				$('.m_master, .cutLogoPicturePop').hide();
+			   //上传剪裁参数
+				// var $cropX = $('#cropX').val(),$cropY = $('#cropY').val(),$cropH = $('#cropH').val(),$cropW = $('#cropW').val(),$thumb_ratio = $('#thumb_ratio').val();
+			 //    $.ajax({
+			 //        type: 'post',
+			 //        url: 'SaveLogoUpload',
+			 //        data: {
+			 //            cropX: $cropX,
+			 //            cropY: $cropY,
+			 //            cropH: $cropH,
+			 //            cropW: $cropW,
+			 //            cropPH: '',
+			 //            cropPW: '',
+			 //            url:JSON_ImgInfoObj['path'],
+			 //            name: JSON_ImgInfoObj['name'],
+			 //            thumb_type: JSON_ImgInfoObj['thumb_type'],
+			 //            thumb_ratio: JSON_ImgInfoObj['thumb_ratio']
+			 //        },
+			 //        dataType: 'json',
+			 //        success: function(res){
+			 //            if(res.state){
+			 //                alert('上传成功');
+				// 			$('#photo_tx_url').attr('src',res.image_url);
+			 //            }else{
+				// 			alert(res.msg);
+			 //                return false;
+			 //            }
+			 //        }
+			 //    });
+			})
+		</script>
+	</body>
+</html>
